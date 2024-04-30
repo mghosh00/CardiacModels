@@ -20,7 +20,7 @@ from numpy import exp, log, sqrt
 #  #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-class ModelTorord:
+class ToRORdRHS:
 
     def __init__(self, t, y, G_Na, P_Cab, G_Kr, G_ClCa, G_Clb, stim_duration,
                  stim_amplitude, multipliers, concs_and_fractions, celltype=0,
@@ -155,7 +155,7 @@ class ModelTorord:
         self.fItop = (1.0 / (1.0 + self.KmCaMK / self.CaMKa))
         self.fICaLp = (1.0 / (1.0 + self.KmCaMK / self.CaMKa))
 
-    def simulate(self):
+    def evaluate(self):
         # #  INa
         INa, dm, dh, dhp, dj, djp = self.getINa_Grandi()
 
@@ -291,17 +291,18 @@ class ModelTorord:
                 self.F * self.vmyo) + JdiffK * self.vss / self.vmyo
         dkss = -ICaK_ss * self.Acap / (self.F * self.vss) - JdiffK
 
-        Bcai = 1.0 / (1.0 + cmdnmax * kmcmdn / (kmcmdn + self.cai) ^ 2.0 + trpnmax * kmtrpn / (kmtrpn + self.cai) ^ 2.0)
+        Bcai = (1.0 / (1.0 + cmdnmax * kmcmdn / (kmcmdn + self.cai) ** 2.0
+                       + trpnmax * kmtrpn / (kmtrpn + self.cai) ** 2.0))
         dcai = Bcai * (-(ICaL_i + IpCa + ICab - 2.0 * INaCa_i) * self.Acap / (
                 2.0 * self.F * self.vmyo) - Jup * self.vnsr / self.vmyo + Jdiff * self.vss / self.vmyo)
 
-        Bcass = 1.0 / (1.0 + BSRmax * KmBSR / (KmBSR + self.cass) ^ 2.0 + BSLmax * KmBSL / (KmBSL + self.cass) ^ 2.0)
+        Bcass = 1.0 / (1.0 + BSRmax * KmBSR / (KmBSR + self.cass) ** 2.0 + BSLmax * KmBSL / (KmBSL + self.cass) ** 2.0)
         dcass = Bcass * (-(ICaL_ss - 2.0 * INaCa_ss) * self.Acap / (
                 2.0 * self.F * self.vss) + Jrel * self.vjsr / self.vss - Jdiff)
 
         dcansr = Jup - Jtr * self.vjsr / self.vnsr
 
-        Bcajsr = 1.0 / (1.0 + csqnmax * kmcsqn / (kmcsqn + self.cajsr) ^ 2.0)
+        Bcajsr = 1.0 / (1.0 + csqnmax * kmcsqn / (kmcsqn + self.cajsr) ** 2.0)
         dcajsr = Bcajsr * (Jtr - Jrel)
 
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -325,29 +326,30 @@ class ModelTorord:
 
         #  The Grandi implementation updated with INa phosphorylation.
         # #  m gate
-        mss = 1 / ((1 + exp(-(56.86 + self.v) / 9.03)) ^ 2)
+        mss = 1 / ((1 + exp(-(56.86 + self.v) / 9.03)) ** 2)
         taum = 0.1292 * exp(-((self.v + 45.79) / 15.54) ** 2) + 0.06487 * exp(-((self.v - 4.823) / 51.12) ** 2)
         dm = (mss - self.m) / taum
 
         # #  h gate
         ah = (self.v >= -40) * 0 + (self.v < -40) * (0.057 * exp(-(self.v + 80) / 6.8))
         bh = ((self.v >= -40) * (0.77 / (0.13 * (1 + exp(-(self.v + 10.66) / 11.1))))
-              + (self.v < -40) * (2.7 * exp(0.079 * self.v) + 3.1 * 10 ^ 5 * exp(0.3485 * self.v)))
+              + (self.v < -40) * (2.7 * exp(0.079 * self.v) + 3.1 * 10 ** 5 * exp(0.3485 * self.v)))
         tauh = 1 / (ah + bh)
-        hss = 1 / ((1 + exp((self.v + 71.55) / 7.43)) ^ 2)
+        hss = 1 / ((1 + exp((self.v + 71.55) / 7.43)) ** 2)
         dh = (hss - self.h) / tauh
         # #  j gate
         aj = ((self.v >= -40) * 0
-              + (self.v < -40) * (((-2.5428 * 10 ** 4 * exp(0.2444 * self.v) - 6.948 * 10 ^ -6 * exp(-0.04391 * self.v))
+              + (self.v < -40) * (((-2.5428 * 10 ** 4 * exp(0.2444 * self.v)
+                                    - 6.948 * 10 ** -6 * exp(-0.04391 * self.v))
                                    * (self.v + 37.78)) / (1 + exp(0.311 * (self.v + 79.23)))))
         bj = ((self.v >= -40) * ((0.6 * exp(0.057 * self.v)) / (1 + exp(-0.1 * (self.v + 32))))
               + (self.v < -40) * ((0.02424 * exp(-0.01052 * self.v)) / (1 + exp(-0.1378 * (self.v + 40.14)))))
         tauj = 1 / (aj + bj)
-        jss = 1 / ((1 + exp((self.v + 71.55) / 7.43)) ^ 2)
+        jss = 1 / ((1 + exp((self.v + 71.55) / 7.43)) ** 2)
         dj = (jss - self.j) / tauj
 
         # #  h phosphorylated
-        hssp = 1 / ((1 + exp((self.v + 71.55 + 6) / 7.43)) ^ 2)
+        hssp = 1 / ((1 + exp((self.v + 71.55 + 6) / 7.43)) ** 2)
         dhp = (hssp - self.hp) / tauh
         # #  j phosphorylated
         taujp = 1.46 * tauj
@@ -355,7 +357,7 @@ class ModelTorord:
 
         # Below is using one of our potentially inferred parameters
         GNa = self.G_Na
-        INa = self.multipliers["I_Na"] * GNa * (self.v - self.ENa) * self.m ^ 3.0 * (
+        INa = self.multipliers["I_Na"] * GNa * (self.v - self.ENa) * self.m ** 3.0 * (
                 (1.0 - self.fINap) * self.h * self.j + self.fINap * self.hp * self.jp)
 
         return INa, dm, dh, dhp, dj, djp
@@ -468,11 +470,11 @@ class ModelTorord:
         Kmn = 0.002
         k2n = 500.0
         km2n = self.jca * 1
-        anca = 1.0 / (k2n / km2n + (1.0 + Kmn / self.cass) ^ 4.0)
+        anca = 1.0 / (k2n / km2n + (1.0 + Kmn / self.cass) ** 4.0)
         dnca = anca * k2n - self.nca * km2n
 
         # #  myoplasmic nca
-        anca_i = 1.0 / (k2n / km2n + (1.0 + Kmn / self.cai) ^ 4.0)
+        anca_i = 1.0 / (k2n / km2n + (1.0 + Kmn / self.cai) ** 4.0)
         dnca_i = anca_i * k2n - self.nca_i * km2n
 
         # #  SS driving force
@@ -629,7 +631,7 @@ class ModelTorord:
         xs2ss = xs1ss
         txs2 = 1.0 / (0.01 * exp((self.v - 50.0) / 20.0) + 0.0193 * exp((-(self.v + 66.54)) / 31.0))
         dxs2 = (xs2ss - self.xs2) / txs2
-        KsCa = 1.0 + 0.6 / (1.0 + (3.8e-5 / self.cai) ^ 1.4)
+        KsCa = 1.0 + 0.6 / (1.0 + (3.8e-5 / self.cai) ** 1.4)
         GKs = 0.0011 * self.multipliers["I_Ks"]
         if self.celltype == 1:
             GKs = GKs * 1.4
@@ -704,7 +706,7 @@ class ModelTorord:
         E3 = x3 / (x1 + x2 + x3 + x4)
         E4 = x4 / (x1 + x2 + x3 + x4)
         KmCaAct = 150.0e-6
-        allo = 1.0 / (1.0 + (KmCaAct / self.cai) ^ 2.0)
+        allo = 1.0 / (1.0 + (KmCaAct / self.cai) ** 2.0)
         zna = 1.0
         JncxNa = 3.0 * (E4 * k7 - E1 * k8) + E3 * k4pp - E2 * k3pp
         JncxCa = E2 * k2 - E1 * k1
@@ -749,7 +751,7 @@ class ModelTorord:
         E3 = x3 / (x1 + x2 + x3 + x4)
         E4 = x4 / (x1 + x2 + x3 + x4)
         KmCaAct = 150.0e-6
-        allo = 1.0 / (1.0 + (KmCaAct / self.cass) ^ 2.0)
+        allo = 1.0 / (1.0 + (KmCaAct / self.cass) ** 2.0)
         JncxNa = 3.0 * (E4 * k7 - E1 * k8) + E3 * k4pp - E2 * k3pp
         JncxCa = E2 * k2 - E1 * k1
         INaCa_ss = self.concs_and_fractions["INaCa_fractionSS"] * Gncx * allo * (zna * JncxNa + zca * JncxCa)
@@ -783,14 +785,14 @@ class ModelTorord:
         Knap = 224.0
         Kxkur = 292.0
         P = eP / (1.0 + H / Khp + self.nai / Knap + self.ki / Kxkur)
-        a1 = (k1p * (self.nai / Knai) ^ 3.0) / ((1.0 + self.nai / Knai) ^ 3.0 + (1.0 + self.ki / Kki) ^ 2.0 - 1.0)
+        a1 = (k1p * (self.nai / Knai) ** 3.0) / ((1.0 + self.nai / Knai) ** 3.0 + (1.0 + self.ki / Kki) ** 2.0 - 1.0)
         b1 = k1m * MgADP
         a2 = k2p
-        b2 = (k2m * (self.nao / Knao) ^ 3.0) / ((1.0 + self.nao / Knao) ^ 3.0 + (1.0 + self.ko / Kko) ^ 2.0 - 1.0)
-        a3 = (k3p * (self.ko / Kko) ^ 2.0) / ((1.0 + self.nao / Knao) ^ 3.0 + (1.0 + self.ko / Kko) ^ 2.0 - 1.0)
+        b2 = (k2m * (self.nao / Knao) ** 3.0) / ((1.0 + self.nao / Knao) ** 3.0 + (1.0 + self.ko / Kko) ** 2.0 - 1.0)
+        a3 = (k3p * (self.ko / Kko) ** 2.0) / ((1.0 + self.nao / Knao) ** 3.0 + (1.0 + self.ko / Kko) ** 2.0 - 1.0)
         b3 = (k3m * P * H) / (1.0 + MgATP / Kmgatp)
         a4 = (k4p * MgATP / Kmgatp) / (1.0 + MgATP / Kmgatp)
-        b4 = (k4m * (self.ki / Kki) ^ 2.0) / ((1.0 + self.nai / Knai) ^ 3.0 + (1.0 + self.ki / Kki) ^ 2.0 - 1.0)
+        b4 = (k4m * (self.ki / Kki) ** 2.0) / ((1.0 + self.nai / Knai) ** 3.0 + (1.0 + self.ki / Kki) ** 2.0 - 1.0)
         x1 = a4 * a1 * a2 + b2 * b4 * b3 + a2 * b4 * b3 + b3 * a1 * a2
         x2 = b2 * b1 * b4 + a1 * a2 * a3 + a3 * b1 * b4 + a2 * a3 * b4
         x3 = a2 * a3 * a4 + b3 * b2 * b1 + b2 * b1 * a4 + a3 * a4 * b1
@@ -817,7 +819,7 @@ class ModelTorord:
 
         bt = 4.75
         a_rel = 0.5 * bt
-        Jrel_inf = a_rel * (-ICaL) / (1.0 + (jsrMidpoint / self.cajsr) ^ 8.0)
+        Jrel_inf = a_rel * (-ICaL) / (1.0 + (jsrMidpoint / self.cajsr) ** 8.0)
         if self.celltype == 2:
             Jrel_inf = Jrel_inf * 1.7
         tau_rel = bt / (1.0 + 0.0123 / self.cajsr)
@@ -828,7 +830,7 @@ class ModelTorord:
         dJrelnp = (Jrel_inf - self.Jrel_np) / tau_rel
         btp = 1.25 * bt
         a_relp = 0.5 * btp
-        Jrel_infp = a_relp * (-ICaL) / (1.0 + (jsrMidpoint / self.cajsr) ^ 8.0)
+        Jrel_infp = a_relp * (-ICaL) / (1.0 + (jsrMidpoint / self.cajsr) ** 8.0)
         if self.celltype == 2:
             Jrel_infp = Jrel_infp * 1.7
         tau_relp = btp / (1.0 + 0.0123 / self.cajsr)
